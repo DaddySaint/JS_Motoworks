@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-white m-0">User Management</h2>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card card-custom mb-4 border-start border-warning border-4">
+                <h5 class="fw-bold text-white mb-4"><i class="fa-solid fa-user-plus text-warning me-2"></i>Create New User</h5>
+                
+                <form action="/users" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label text-white small fw-bold">Full Name</label>
+                        <input type="text" name="full_name" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Baltazar" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-white small fw-bold">Username</label>
+                        <input type="text" name="username" class="form-control bg-dark text-white border-secondary" placeholder="Login ID" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white small fw-bold">Password</label>
+                        <div class="input-group">
+                            <input type="password" name="password" id="passInput" class="form-control bg-dark text-white border-secondary" placeholder="Enter secure password" required>
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white small fw-bold">System Role</label>
+                        <select name="role" class="form-select bg-dark text-white border-secondary" required>
+                            <option value="Cashier">Cashier (POS & Sales Only)</option>
+                            <option value="Admin">Admin (Full Access)</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-warning w-100 fw-bold shadow py-2">CREATE ACCOUNT</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card card-custom h-100 border-start border-info border-4">
+                <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-users-gear text-info me-2"></i>System Users</h5>
+
+                <div class="table-responsive flex-grow-1" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-dark table-hover align-middle">
+                        <thead style="position: sticky; top: 0; background-color: #1e1e24; z-index: 1;">
+                            <tr>
+                                <th class="text-white">Full Name</th>
+                                <th class="text-white">Username</th>
+                                <th class="text-white text-center">Role</th>
+                                <th class="text-white">Date Created</th>
+                                <th class="text-white text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td class="fw-bold text-white">
+                                    <i class="fa-solid fa-circle-user text-secondary me-2 fs-5"></i>{{ user.full_name }}
+                                </td>
+                                <td class="text-white">{{ user.username }}</td>
+                                <td class="text-center">
+                                    {% if user.role == 'Admin' %}
+                                        <span class="badge bg-danger text-white"><i class="fa-solid fa-crown me-1"></i>Admin</span>
+                                    {% else %}
+                                        <span class="badge bg-primary text-white"><i class="fa-solid fa-cash-register me-1"></i>Cashier</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-white small">{{ user.created_at }}</td>
+                                <td class="text-center">
+                                    {% if user.user_id == session.user_id %}
+                                        <span class="badge bg-secondary text-white">Current User</span>
+                                    {% else %}
+                                        <form action="/delete_user/{{ user.user_id }}" method="POST" onsubmit="return confirmDelete('{{ user.full_name }}')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold">
+                                                <i class="fa-solid fa-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-white py-5">No users found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        let passInput = document.getElementById("passInput");
+        let eyeIcon = document.getElementById("eyeIcon");
+        if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            passInput.type = "password";
+            eyeIcon.classList.replace("fa-eye-slash", "fa-eye");
+        }
+    }
+
+    function confirmDelete(userName) {
+        return confirm(`Are you sure you want to PERMANENTLY DELETE the account of ${userName}? They will no longer be able to log in.`);
+    }
+</script>
+{% endblock %}

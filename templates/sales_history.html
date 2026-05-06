@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-white m-0">Sales History & Reports</h2>
+    </div>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <div class="card card-custom h-100 border-start border-warning border-4">
+                <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-filter text-warning me-2"></i>Filter Records</h5>
+                
+                <form action="/sales" method="GET">
+                    <div class="mb-3">
+                        <label class="form-label text-white fw-bold small">Start Date</label>
+                        <input type="date" name="start_date" class="form-control bg-dark text-white border-secondary" value="{{ start_date if start_date else '' }}" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-white fw-bold small">End Date</label>
+                        <input type="date" name="end_date" class="form-control bg-dark text-white border-secondary" value="{{ end_date if end_date else '' }}" required>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning fw-bold w-100 shadow"><i class="fa-solid fa-magnifying-glass me-2"></i>Search</button>
+                        
+                        {% if start_date %}
+                        <a href="/sales" class="btn btn-outline-light fw-bold w-100"><i class="fa-solid fa-rotate-left me-2"></i>Reset</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-3">
+            <div class="card card-custom h-100 d-flex justify-content-center align-items-center border-start border-success border-4" style="background: linear-gradient(145deg, #16161a, #1a1010);">
+                <div class="text-center w-100 px-4">
+                    <h5 class="text-white fw-bold text-uppercase letter-spacing-1 mb-2">
+                        {% if start_date and end_date %}
+                            Sales from {{ start_date }} to {{ end_date }}
+                        {% else %}
+                            Total Sales (Recent 200 Transactions)
+                        {% endif %}
+                    </h5>
+                    
+                    <h1 class="fw-bold m-0" style="font-size: 3.5rem; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        PHP {{ "{:,.2f}".format(total_sales) }}
+                    </h1>
+                    <p class="text-success mt-2 mb-0 fw-bold"><i class="fa-solid fa-arrow-trend-up me-2"></i>System Computed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-custom border-start border-info border-4 mt-2">
+        <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-list-ul text-info me-2"></i>Transaction Logs</h5>
+        
+        <div class="table-responsive flex-grow-1" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-dark table-hover align-middle">
+                <thead style="position: sticky; top: 0; background-color: #1e1e24; z-index: 1;">
+                    <tr>
+                        <th class="text-white">Date & Time</th>
+                        <th class="text-white">Receipt No.</th>
+                        <th class="text-white text-center">Payment Method</th>
+                        <th class="text-white text-end">Total Amount</th>
+                        <th class="text-white text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales %}
+                    <tr>
+                        <td class="text-white small">{{ sale.transaction_date }}</td>
+                        <td class="text-info fw-bold">{{ sale.receipt_no }}</td>
+                        <td class="text-center">
+                            {% if sale.payment_method == 'GCash' %}
+                                <span class="badge bg-primary text-white px-2 py-1"><i class="fa-solid fa-mobile-screen me-1"></i>GCash</span>
+                            {% else %}
+                                <span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-money-bill me-1"></i>Cash</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-success fw-bold text-end">₱{{ "{:,.2f}".format(sale.total_amount) }}</td>
+                        <td class="text-center">
+                            <a href="/print_receipt/{{ sale.receipt_no }}" target="_blank" class="btn btn-sm btn-outline-warning fw-bold">
+                                <i class="fa-solid fa-file-invoice me-1"></i>View Receipt
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-white py-5">
+                            <i class="fa-solid fa-receipt fs-1 text-muted mb-3 d-block"></i>
+                            No transactions found for the selected dates.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="d-flex justify-content-end mb-3">
+    <a href="/export_sales_excel" class="btn btn-success fw-bold shadow-sm">
+        <i class="fa-solid fa-file-excel me-2"></i>Download Sales History (.xlsx)
+    </a>
+</div>
+
+</div>
+{% endblock %}

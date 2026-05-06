@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt | JS Motoworks</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0f0f13; /* Dark background para lutang ang resibo */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Courier Prime', monospace;
+            padding: 20px;
+        }
+
+        
+        .receipt-paper {
+            background-color: #ffffff;
+            color: #000000;
+            width: 320px; 
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .center { text-align: center; }
+        .bold { font-weight: 700; }
+        .divider { border-top: 1px dashed #000; margin: 10px 0; }
+        
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        .item-qty { width: 30px; }
+        .item-desc { flex-grow: 1; padding-right: 10px; }
+        .item-amt { text-align: right; width: 80px; }
+
+        .total-row { display: flex; justify-content: space-between; font-size: 1.1rem; margin-top: 5px; }
+        
+        .no-print {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        .btn-green { background-color: #28a745; color: white; }
+        .btn-red { background-color: #dc3545; color: white; }
+
+        @media print {
+            body { background-color: white; align-items: flex-start; }
+            .receipt-paper { box-shadow: none; width: 100%; margin: 0; padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div>
+        <div class="receipt-paper">
+            <div class="center">
+                <h2 style="margin: 0;">JS MOTOWORKS</h2>
+                <div style="font-size: 0.85rem; margin-bottom: 10px;">
+                    Makati City, Metro Manila<br>
+                    CP: 0912-345-6789
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            
+            <div style="font-size: 0.85rem;">
+                <div><span class="bold">OR#:</span> {{ transaction.receipt_no }}</div>
+                <div><span class="bold">Date:</span> {{ transaction.transaction_date }}</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="item-row bold">
+                <div class="item-qty">QTY</div>
+                <div class="item-desc">ITEM</div>
+                <div class="item-amt">AMT</div>
+            </div>
+
+            {% for item in items %}
+            <div class="item-row">
+                <div class="item-qty">{{ item.qty }}</div>
+                <div class="item-desc">{{ item.item_description[:16] }}</div>
+                <div class="item-amt">{{ "{:,.2f}".format(item.subtotal) }}</div>
+            </div>
+            {% endfor %}
+
+            <div class="divider"></div>
+
+            <div class="total-row bold">
+                <div>TOTAL:</div>
+                <div>PHP {{ "{:,.2f}".format(transaction.total_amount) }}</div>
+            </div>
+            
+            <div style="font-size: 0.85rem; margin-top: 10px;">
+                <div><span class="bold">Method:</span> {{ transaction.payment_method }}</div>
+                {% if transaction.payment_method == 'GCash' and transaction.gcash_reference %}
+                <div><span class="bold">Ref:</span> {{ transaction.gcash_reference }}</div>
+                {% endif %}
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="center" style="font-size: 0.85rem; margin-top: 15px;">
+                THANK YOU! RIDE SAFE!<br>
+            </div>
+        </div>
+
+        <div class="no-print">
+            <button class="btn btn-green" onclick="reprintReceipt('{{ transaction.receipt_no }}')">Print</button>
+            <button class="btn btn-red" onclick="window.close()">Close Tab</button>
+        </div>
+    </div>
+
+    <script>
+        function reprintReceipt(receiptNo) {
+            fetch(`/reprint_direct/${receiptNo}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('✅ ' + data.message);
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('System error: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>

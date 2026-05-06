@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book an Appointment | JS Motoworks</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0f0f13;
+            color: white;
+            background-image: radial-gradient(circle at top right, #2a1111, #0f0f13 50%);
+            min-height: 100vh;
+        }
+        .brand-text {
+            background: linear-gradient(135deg, #ff4b2b, #ff416c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+        .booking-card {
+            background: #16161a;
+            border-top: 4px solid #ff4b2b;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .form-control, .form-select {
+            background-color: #212529;
+            color: white;
+            border: 1px solid #333;
+            padding: 12px;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #2b3035;
+            color: white;
+            border-color: #ff4b2b;
+            box-shadow: 0 0 0 0.25rem rgba(255, 75, 43, 0.25);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #ff4b2b, #ff416c);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            transition: transform 0.3s;
+        }
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        /* Para puti din ang placeholder text */
+        ::placeholder {
+            color: #ccc !important;
+            opacity: 1; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <div class="text-center mb-4">
+                <h1 class="brand-text">JS MOTOWORKS</h1>
+                <p class="text-white fw-bold">Premium Service & Maintenance</p>
+            </div>
+
+            <div class="card booking-card p-4 p-md-5">
+                <h4 class="text-white fw-bold mb-4"><i class="fa-solid fa-calendar-plus text-warning me-2"></i>Schedule a Visit</h4>
+                
+                <form action="/book" method="POST">
+                    <h6 class="text-white mb-3 border-bottom border-secondary pb-2 fw-bold">Customer Details</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-white small fw-bold">Full Name</label>
+                        <input type="text" name="customer_name" class="form-control" placeholder="Juan Dela Cruz" required>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label class="form-label text-white small fw-bold">Contact Number</label>
+                            <input type="tel" name="contact_number" class="form-control" placeholder="09XXXXXXXXX" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Motorcycle Model</label>
+                            <input type="text" name="motorcycle_model" class="form-control" placeholder="e.g. Yamaha NMAX v2" required>
+                        </div>
+                    </div>
+
+                    <h6 class="text-white mb-3 border-bottom border-secondary pb-2 mt-4 fw-bold">Service Details</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-white small fw-bold">Type of Service</label>
+                        <select name="service_category" class="form-select" required>
+                            <option value="">Select Service...</option>
+                            <option value="PMS (Preventive Maintenance)">PMS (Preventive Maintenance)</option>
+                            <option value="Change Oil / Tune-up">Change Oil / Tune-up</option>
+                            <option value="CVT Cleaning">CVT Cleaning</option>
+                            <option value="Engine Overhaul">Engine Overhaul</option>
+                            <option value="Electrical Repair">Electrical Repair</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-white small fw-bold">Specific Issue / Request (Optional)</label>
+                        <textarea name="customer_notes" class="form-control" rows="2" placeholder="Describe the problem..."></textarea>
+                    </div>
+
+                    <h6 class="text-white mb-3 border-bottom border-secondary pb-2 mt-4 fw-bold">Schedule</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label class="form-label text-white small fw-bold">Preferred Date</label>
+                            <input type="date" name="appointment_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Preferred Time</label>
+                            <input type="time" name="appointment_time" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-gradient w-100 rounded-pill mt-3 shadow-lg text-white">SUBMIT BOOKING</button>
+                </form>
+            <!-- ============================================== -->
+<!-- SHOP LOCATION & MAP SECTION -->
+<!-- ============================================== -->
+<div class="card card-custom border-start border-danger border-4 mb-4" style="background-color: #1a1a24;">
+    <div class="card-body row align-items-center">
+        <!-- Text Info -->
+        <div class="col-md-5 mb-3 mb-md-0">
+            <h4 class="fw-bold text-white mb-3"><i class="fa-solid fa-location-dot text-danger me-2"></i>Visit Our Shop</h4>
+            <p class="text-white mb-2">
+                <strong class="text-white">Address:</strong><br>
+                #13 Sandoval Street, Barangay Pinagbuhatan, Pasig City, Pasig, Philippines, 1600
+            </p>
+            <p class="text-white mb-2">
+                <strong class="text-white">Operating Hours:</strong><br>
+                Monday - Saturday (8:00 AM - 6:00 PM)
+            </p>
+            <p class="text-white m-0">
+                <strong class="text-white">Contact:</strong><br>
+                <i class="fa-solid fa-phone text-info me-1"></i> 0998 991 3579
+            </p>
+        </div>
+        
+        <!-- Google Map frame -->
+        <div class="col-md-7">
+            <iframe 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.6453327292793!2d121.09164277584556!3d14.56226318591953!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c7cf7092ebe1%3A0x3cb14e048995b645!2s13%20Sandoval%20Ave%2C%20Pasig%2C%201600%20Metro%20Manila!5e0!3m2!1sen!2sph!4v1778090949084!5m2!1sen!2sph" 
+                width="100%" 
+                height="200" 
+                style="border:0; border-radius: 7px;" 
+                allowfullscreen="" 
+                loading="lazy" 
+                referrerpolicy="no-referrer-when-downgrade">
+            </iframe>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

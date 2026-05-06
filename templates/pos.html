@@ -1,0 +1,445 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--single {
+        background-color: #212529;
+        border: 1px solid #495057;
+        height: 40px;
+        padding-top: 5px;
+        border-radius: 0.375rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #fff;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px;
+    }
+    .select2-dropdown {
+        background-color: #212529;
+        border: 1px solid #495057;
+        color: #fff;
+    }
+    .select2-container--default .select2-results__option--selected {
+        background-color: #ff4b2b;
+    }
+    .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+        background-color: #343a40;
+        color: white;
+    }
+    .select2-search__field {
+        background-color: #343a40 !important;
+        color: white !important;
+        border: 1px solid #495057 !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-5">
+            
+            <div class="card card-custom mb-3 p-3 border-start border-primary border-4">
+                <h6 class="fw-bold text-white mb-2"><i class="fa-solid fa-barcode text-primary me-2"></i>Scan Part (Barcode/SKU)</h6>
+                <div class="input-group">
+                    <input type="text" id="scannerInput" class="form-control bg-dark text-white border-secondary" placeholder="Scan item here..." autofocus>
+                    <button class="btn btn-primary fw-bold" onclick="searchItem()">Add</button>
+                </div>
+            </div>
+
+            <div class="card card-custom mb-3 p-3 border-start border-success border-4">
+                <h6 class="fw-bold text-white mb-2"><i class="fa-solid fa-wrench text-success me-2"></i>Select Standard Labor</h6>
+                <div class="d-flex">
+                    <div style="width: 75%;">
+                        <select id="serviceSelect" class="form-control">
+                            <option value="">Search service...</option>
+                            {% for svc in services %}
+                                <option value='{"name":"{{ svc.service_name }}", "price":{{ svc.labor_fee }}}'>
+                                    {{ svc.service_name }} - ₱{{ svc.labor_fee }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-success fw-bold ms-2" onclick="addStandardService()" style="width: 25%;">Add</button>
+                </div>
+            </div>
+
+            <div class="card card-custom mb-3 p-3 border-start border-info border-4">
+                <h6 class="fw-bold text-white mb-2"><i class="fa-solid fa-user-gear text-info me-2"></i>Add Custom Labor</h6>
+                <div class="input-group">
+                    <input type="text" id="customLaborName" class="form-control bg-dark text-white border-secondary" placeholder="Task Description">
+                    <input type="number" id="customLaborPrice" class="form-control bg-dark text-white border-secondary" placeholder="Amount (₱)" style="max-width: 120px;">
+                    <button class="btn btn-info text-dark fw-bold" onclick="addCustomLabor()">Add</button>
+                </div>
+            </div>
+            
+            <div class="card card-custom mb-3 p-3 border-start border-warning border-4">
+                <h6 class="fw-bold text-white mb-2"><i class="fa-solid fa-box-open text-warning me-2"></i>Add Outsourced Part</h6>
+                <div class="input-group">
+                    <input type="text" id="outName" class="form-control bg-dark text-white border-secondary" placeholder="Item Name">
+                    <input type="number" id="outPrice" class="form-control bg-dark text-white border-secondary" placeholder="Price (₱)" style="max-width: 120px;">
+                    <button class="btn btn-warning text-dark fw-bold" onclick="addOutsourced()">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            
+        <div class="card card-custom border-secondary mb-3 p-3" style="background: #1a1a24;">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <label class="text-white fw-bold mb-0"><i class="fa-solid fa-users me-2"></i>Active Cart:</label>
+                    </div>
+                    <div class="col-md-5 d-flex gap-1">
+                        <select id="customerTab" class="form-select form-select-sm fw-bold bg-dark text-white border-secondary" onchange="switchCustomer()">
+                            <option value="Customer">Customer</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-info" onclick="renameCustomer()" title="Rename Cart">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <button class="btn btn-outline-warning btn-sm fw-bold w-100" onclick="newCustomer()">+ New</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom d-flex flex-column" style="min-height: 500px;">
+                <h5 class="fw-bold text-white mb-3 border-bottom border-secondary pb-2">
+                    <i class="fa-solid fa-cart-shopping" style="color: var(--accent-color);"></i> Cart for: <span id="displayCustomerName" class="text-warning">Customer</span>
+                </h5>
+                
+                <div class="table-responsive flex-grow-1" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-dark table-hover align-middle mt-2">
+                        <thead style="position: sticky; top: 0; background-color: #1e1e24; z-index: 1;">
+                            <tr>
+                                <th class="text-white">Type</th>
+                                <th class="text-white">Item/Service</th>
+                                <th class="text-white text-center">Qty</th>
+                                <th class="text-white text-end">Price</th>
+                                <th class="text-white text-end">Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartTable"></tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3 pt-3 border-top border-secondary">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="text-white m-0 fw-bold">TOTAL:</h4>
+                        <h1 class="fw-bold m-0" style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">₱<span id="totalAmount">0.00</span></h1>
+                    </div>
+                    
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="fw-bold text-white small mb-1">Payment Method</label>
+                            <select id="paymentMethod" class="form-select form-select-lg bg-dark text-white border-secondary" onchange="toggleGCash()">
+                                <option value="Cash">💵 Cash</option>
+                                <option value="GCash">📱 GCash (via PayMongo)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button id="checkoutBtn" class="btn btn-primary btn-lg w-100 fw-bold shadow" onclick="processCheckout()" style="background: var(--accent-gradient); border: none;">
+                                Complete Checkout
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="gcashDiv" class="text-center mt-3 p-3 border border-info rounded" style="background: rgba(13, 202, 240, 0.1); display: none;">
+                        <p class="mb-2 text-info fw-bold small"><i class="fa-solid fa-spinner fa-spin me-2"></i>Waiting for payment confirmation...</p>
+                        <div class="input-group">
+                            <span class="input-group-text bg-info text-dark fw-bold">Ref No.</span>
+                            <input type="text" id="gcashReferenceInput" class="form-control border-info bg-dark text-white text-center fw-bold" placeholder="Enter 13-Digit Ref Number">
+                        </div>
+                        <small class="text-white mt-2 d-block">Input the reference number after the customer pays via the generated link.</small>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    // MULTIPLE CARTS
+    let carts = { "Customer": [] };
+    let activeCustomer = "Customer";
+    let total = 0;
+
+    $(document).ready(function() {
+        $('#serviceSelect').select2({ placeholder: "Type to search service...", allowClear: true });
+        updateCartDisplay();
+    });
+
+    function newCustomer() {
+        let name = prompt("Enter Customer Name or Motor Plate (e.g., Dingdong NMAX):");
+        if (name && name.trim() !== "") {
+            if (!carts[name]) {
+                carts[name] = [];
+                let opt = document.createElement('option');
+                opt.value = name;
+                opt.innerHTML = name;
+                document.getElementById('customerTab').appendChild(opt);
+            }
+            document.getElementById('customerTab').value = name;
+            switchCustomer();
+        }
+    }
+
+    function switchCustomer() {
+        activeCustomer = document.getElementById('customerTab').value;
+        document.getElementById('displayCustomerName').innerText = activeCustomer;
+        document.getElementById('paymentMethod').value = 'Cash'; 
+        toggleGCash();
+        updateCartDisplay();
+    }
+
+    // ADD ITEMS
+    document.getElementById("scannerInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") { event.preventDefault(); searchItem(); }
+    });
+
+    function searchItem() {
+        const sku = document.getElementById('scannerInput').value.trim(); 
+        
+        if(!sku) return;
+
+        fetch(`/api/get_item/${sku}`)
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    addToCart('Part', data.data.item_name, data.data.price, data.data.sku);
+                    document.getElementById('scannerInput').value = ''; 
+                } else {
+                    alert(data.message);
+                    document.getElementById('scannerInput').value = '';
+                }
+            })
+            .catch(error => {
+                alert("System Error: Could not connect to barcode database.");
+            });
+    }
+
+    function addStandardService() {
+        const val = document.getElementById('serviceSelect').value;
+        if(!val) { alert("Please select a service first!"); return; }
+        const service = JSON.parse(val);
+        addToCart('Labor', service.name, parseFloat(service.price), 'LABOR-STD');
+        $('#serviceSelect').val(null).trigger('change');
+    }
+
+    function addCustomLabor() {
+        const name = document.getElementById('customLaborName').value;
+        const price = parseFloat(document.getElementById('customLaborPrice').value);
+        if(!name || isNaN(price)) { alert("Please enter both Task Description and Amount."); return; }
+        addToCart('Labor', name + " (Custom)", price, 'LABOR-CSTM');
+        document.getElementById('customLaborName').value = '';
+        document.getElementById('customLaborPrice').value = '';
+    }
+
+    function addOutsourced() {
+        const name = document.getElementById('outName').value;
+        const price = parseFloat(document.getElementById('outPrice').value);
+        if(!name || isNaN(price)) return;
+        addToCart('Outsourced', name + " (Outsourced)", price, 'OUT');
+        document.getElementById('outName').value = '';
+        document.getElementById('outPrice').value = '';
+    }
+
+    function addToCart(type, name, price, sku) {
+        let existing = carts[activeCustomer].find(i => i.sku === sku && type === 'Part');
+        if (existing) { 
+            existing.qty += 1; 
+        } else { 
+            carts[activeCustomer].push({ type: type, name: name, price: price, sku: sku, qty: 1 }); 
+        }
+        updateCartDisplay();
+    }
+
+    function removeItem(index) {
+        carts[activeCustomer].splice(index, 1);
+        updateCartDisplay();
+    }
+
+    //DISPLAY LOGIC 
+    function updateCartDisplay() {
+        const tbody = document.getElementById('cartTable');
+        tbody.innerHTML = '';
+        total = 0;
+
+        let currentCart = carts[activeCustomer] || [];
+
+        currentCart.forEach((item, index) => {
+            const subtotal = item.qty * item.price;
+            total += subtotal;
+            let badge = item.type === 'Part' ? 'bg-primary' : (item.type === 'Labor' ? 'bg-success' : 'bg-warning text-dark');
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="badge ${badge}">${item.type}</span></td>
+                    <td class="text-white fw-bold">${item.name}</td>
+                    <td class="text-center text-white">${item.qty}</td>
+                    <td class="text-end text-white">₱${item.price.toFixed(2)}</td>
+                    <td class="text-end fw-bold text-success">₱${subtotal.toFixed(2)}</td>
+                    <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="removeItem(${index})"><i class="fa-solid fa-xmark"></i></button></td>
+                </tr>
+            `;
+        });
+        document.getElementById('totalAmount').innerText = total.toFixed(2);
+        
+        const btn = document.getElementById('checkoutBtn');
+        if (document.getElementById('paymentMethod').value === 'GCash') {
+            btn.innerHTML = '<i class="fa-solid fa-link me-2"></i>Generate PayMongo Link';
+            btn.style.background = '#0d6efd'; // Bootstrap blue
+            document.getElementById('gcashDiv').style.display = 'none'; 
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-check-double me-2"></i>Complete Checkout';
+            btn.style.background = 'var(--accent-gradient)';
+            document.getElementById('gcashDiv').style.display = 'none';
+        }
+    }
+
+    function toggleGCash() {
+        updateCartDisplay(); 
+    }
+
+    //CHECKOUT LOGIC
+    function processCheckout() {
+        let currentCart = carts[activeCustomer];
+        
+        if(!currentCart || currentCart.length === 0) {
+            alert(`Cart is empty for ${activeCustomer}!`);
+            return;
+        }
+
+        const method = document.getElementById('paymentMethod').value;
+        const btn = document.getElementById('checkoutBtn');
+
+        // PAYMONGO LINK GENERATION
+        if (method === 'GCash' && btn.innerText.includes("Generate PayMongo Link")) {
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Generating link...';
+            btn.disabled = true;
+
+            fetch('/api/generate_paymongo_link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ total_amount: total })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.open(data.checkout_url, "_blank");
+                    document.getElementById('gcashDiv').style.display = 'block';
+                    btn.innerHTML = '<i class="fa-solid fa-check me-2"></i>Confirm GCash Payment';
+                    btn.style.background = '#198754'; // Bootstrap success green
+                    btn.disabled = false;
+                } else {
+                    alert("PayMongo Error: " + data.message);
+                    btn.innerHTML = '<i class="fa-solid fa-link me-2"></i>Generate PayMongo Link';
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                alert("Failed to connect to PayMongo Server.");
+                btn.innerHTML = '<i class="fa-solid fa-link me-2"></i>Generate PayMongo Link';
+                btn.disabled = false;
+            });
+            return; 
+        }
+
+        let gcashRef = null;
+        if (method === 'GCash') {
+            gcashRef = document.getElementById('gcashReferenceInput').value;
+            if (!gcashRef || gcashRef.length < 5) {
+                alert("Please enter the GCash Reference Number.");
+                document.getElementById('gcashReferenceInput').focus();
+                return;
+            }
+        }
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Processing...';
+        btn.disabled = true;
+
+        const payload = {
+            cart: currentCart,
+            payment_method: method,
+            total_amount: total,
+            gcash_ref: gcashRef
+        };
+
+        fetch('/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                alert(`Transaction for ${activeCustomer} successful! Printing to POS-58...`);
+                window.open(`/print_receipt/${data.receipt}`, "_blank");
+                
+                // Remove the finished customer from tabs
+                delete carts[activeCustomer];
+                let select = document.getElementById('customerTab');
+                
+                for (let i=0; i<select.length; i++) {
+                    if (select.options[i].value == activeCustomer)
+                        select.remove(i);
+                }
+
+                // If no customers left, create a default Walk-in
+                if (Object.keys(carts).length === 0) {
+                    carts["Customer"] = [];
+                    let opt = document.createElement('option');
+                    opt.value = "Customer";
+                    opt.innerHTML = "Customer";
+                    select.appendChild(opt);
+                }
+
+                // Switch to the first available tab
+                activeCustomer = Object.keys(carts)[0];
+                select.value = activeCustomer;
+                
+                // Reset UI
+                document.getElementById('paymentMethod').value = 'Cash'; 
+                document.getElementById('gcashReferenceInput').value = ''; 
+                document.getElementById('gcashDiv').style.display = 'none'; 
+                btn.disabled = false;
+                
+                switchCustomer(); // Update display for the next customer
+            } else {
+                alert("Error: " + data.message);
+                btn.innerHTML = method === 'GCash' ? '<i class="fa-solid fa-check me-2"></i>Confirm GCash Payment' : '<i class="fa-solid fa-check-double me-2"></i>Complete Checkout';
+                btn.disabled = false;
+            }
+        });
+    }
+
+    //RENAME CUSTOMER LOGIC
+    function renameCustomer() {
+        let currentName = document.getElementById('customerTab').value;
+        let newName = prompt("Rename current customer/cart:", currentName);
+        
+        if (newName && newName.trim() !== "" && newName !== currentName) {
+            if (carts[newName]) {
+                alert("A cart with this name already exists!");
+                return;
+            }
+            
+            carts[newName] = carts[currentName];
+            delete carts[currentName];
+            
+            let select = document.getElementById('customerTab');
+            select.options[select.selectedIndex].value = newName;
+            select.options[select.selectedIndex].innerHTML = newName;
+            
+            activeCustomer = newName;
+            switchCustomer(); 
+        }
+    }
+</script>
+{% endblock %}

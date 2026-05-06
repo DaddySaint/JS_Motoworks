@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-white m-0">Inventory Audit Logs</h2>
+        <a href="/inventory" class="btn btn-outline-info fw-bold"><i class="fa-solid fa-arrow-left me-2"></i>Back to Inventory</a>
+    </div>
+
+    <div class="card card-custom border-start border-warning border-4">
+        <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-clipboard-list text-warning me-2"></i>Stock Movement History</h5>
+        
+        <div class="table-responsive flex-grow-1" style="max-height: 600px; overflow-y: auto;">
+            <table class="table table-dark table-hover align-middle">
+                <thead style="position: sticky; top: 0; background-color: #1e1e24; z-index: 1;">
+                    <tr>
+                        <th class="text-white">Date & Time</th>
+                        <th class="text-white text-center">Action</th>
+                        <th class="text-white">Item Detail</th>
+                        <th class="text-white text-center">Qty Changed</th>
+                        <th class="text-white">Performed By</th>
+                        <th class="text-white">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-white small">{{ log.log_date }}</td>
+                        <td class="text-center">
+                            {% if log.action == 'Stock In' %}
+                                <span class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-arrow-turn-down me-1"></i>Stock In</span>
+                            {% elif log.action == 'Stock Out' or log.action == 'Checkout' %}
+                                <span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-arrow-turn-up me-1"></i>Deduct</span>
+                            {% else %}
+                                <span class="badge bg-secondary text-white px-2 py-1">{{ log.action }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-white fw-bold d-block">{{ log.item_name }}</span>
+                            <small class="text-info fw-bold">{{ log.sku }}</small>
+                        </td>
+                        <td class="text-center fw-bold text-white fs-5">{{ log.qty }}</td>
+                        <td>
+                            <span class="badge bg-dark border border-secondary text-white"><i class="fa-solid fa-user me-1"></i>{{ log.username }}</span>
+                        </td>
+                        <td class="text-muted small">{{ log.remarks }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-white py-5">
+                            <i class="fa-solid fa-box-open fs-1 text-muted mb-3 d-block"></i>
+                            No inventory movements recorded yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
