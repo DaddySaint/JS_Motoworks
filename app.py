@@ -145,29 +145,46 @@ def dashboard():
                            pay_data=pay_data)
 
 # INVENTORY
+# INVENTORY
 @app.route('/inventory', methods=['GET', 'POST'])
 def inventory_page(): 
     if 'user_id' not in session:
         return redirect(url_for('login'))
     if session.get('role') != 'Admin':
         return redirect(url_for('pos_page'))
+    
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
     if request.method == 'POST':
+        scanned_sku = request.form['sku'].strip()
         item_name = request.form['item_name']
         brand = request.form['brand']
         category = request.form['category']
         price = request.form['price']
-        stock_qty = request.form['stock_qty']
+        added_qty = int(request.form['stock_qty'])
         
-        sku = generate_smart_sku(category, brand, cursor)
+        cursor.execute("SELECT * FROM inventory WHERE sku = %s", (scanned_sku,))
+        existing_item = cursor.fetchone()
         
-        sql = "INSERT INTO inventory (sku, item_name, brand, category, price, stock_qty) VALUES (%s, %s, %s, %s, %s, %s)"
-        val = (sku, item_name, brand, category, price, stock_qty)
-        cursor.execute(sql, val)
+        if existing_item:
+            cursor.execute("""
+                UPDATE inventory 
+                SET stock_qty = stock_qty + %s 
+                WHERE sku = %s
+            """, (added_qty, scanned_sku))
+            
+            current_user = session.get('username', 'Admin')
+            cursor.execute(
+                "INSERT INTO stock_logs (sku, action, qty, username, remarks) VALUES (%s, %s, %s, %s, %s)",
+                (scanned_sku, 'Stock In', added_qty, current_user, "Added via New Item Form")
+            )
+        else:
+            sql = "INSERT INTO inventory (sku, item_name, brand, category, price, stock_qty) VALUES (%s, %s, %s, %s, %s, %s)"
+            val = (scanned_sku, item_name, brand, category, price, added_qty)
+            cursor.execute(sql, val)
+            
         conn.commit()
-        
         return redirect(url_for('inventory_page')) 
         
     cursor.execute("SELECT * FROM inventory ORDER BY item_id DESC")
