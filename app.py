@@ -843,6 +843,58 @@ def delete_item(item_sku):
     except Exception as e:
         print(f"ERROR SA DELETE: {e}")
         return jsonify({"success": False, "message": f"Database Error: {str(e)}"})
+    
+#DELETE SALES TRANSACT
+@app.route('/purge_sales', methods=['POST'])
+@admin_only
+def purge_sales():
+    target_month = request.form.get('target_month')
+    admin_password = request.form.get('admin_password')
+    
+    if not target_month or not admin_password:
+         return jsonify({"success": False, "message": "Month and Admin Password are required."})
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"success": False, "message": "Database error."})
+
+    try:
+        cursor = conn.cursor(dictionary=True)
+
+        #VERIFY ADMIN PASSWORD 
+        cursor.execute("SELECT password_hash FROM users WHERE user_id = %s", (session['user_id'],))
+        admin = cursor.fetchone()
+        
+        if not admin or not check_password_hash(admin['password_hash'], admin_password):
+            return jsonify({"success": False, "message": "Incorrect Admin Password"})
+        cursor.execute("""
+            SELECT transaction_id FROM sales_transactions 
+            WHERE DATE_FORMAT(transaction_date, '%Y-%m') = %s
+        """, (target_month,))
+        transactions = cursor.fetchall()
+
+        if not transactions:
+            return jsonify({"success": False, "message": f"Walang records na nahanap para sa buwan ng {target_month}."})
+
+        transaction_ids = [t['transaction_id'] for t in transactions]
+        format_strings = ','.join(['%s'] * len(transaction_ids))
+        cursor.execute(f"DELETE FROM sales_items WHERE transaction_id IN ({format_strings})", tuple(transaction_ids))
+        cursor.execute(f"DELETE FROM sales_transactions WHERE transaction_id IN ({format_strings})", tuple(transaction_ids))
+        current_admin = session.get('username')
+        cursor.execute("""
+            INSERT INTO stock_logs (sku, action, qty, username, remarks) 
+            VALUES ('SYSTEM', 'DATA PURGE', 0, %s, %s)
+        """, (current_admin, f"Purged {len(transaction_ids)} sales records for {target_month}"))
+
+        conn.commit()
+        return jsonify({"success": True, "message": f"Success! {len(transaction_ids)} sales records for {target_month} have been purged."})
+
+    except Exception as e:
+        conn.rollback()
+        print(f"ERROR SA PURGE: {e}")
+        return jsonify({"success": False, "message": f"Database Error: {str(e)}"})
+    finally:
+        conn.close()
 
 # RUN
 if __name__ == '__main__':
