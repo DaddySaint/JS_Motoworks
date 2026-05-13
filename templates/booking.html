@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book an Appointment | JS Motoworks</title>
+    <title>JS Motoworks</title>
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='logo.jpg', v=1) }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -54,7 +55,6 @@
             transform: translateY(-2px);
             color: white;
         }
-        /* Para puti din ang placeholder text */
         ::placeholder {
             color: #ccc !important;
             opacity: 1; 
@@ -124,9 +124,7 @@
 
                     <button type="submit" class="btn btn-gradient w-100 rounded-pill mt-3 shadow-lg text-white">SUBMIT BOOKING</button>
                 </form>
-            <!-- ============================================== -->
 <!-- SHOP LOCATION & MAP SECTION -->
-<!-- ============================================== -->
 <div class="card card-custom border-start border-danger border-4 mb-4" style="background-color: #1a1a24;">
     <div class="card-body row align-items-center">
         <!-- Text Info -->
@@ -143,21 +141,26 @@
             <p class="text-white m-0">
                 <strong class="text-white">Contact:</strong><br>
                 <i class="fa-solid fa-phone text-info me-1"></i> 0998 991 3579
-            </p>
         </div>
         
-        <!-- Google Map frame -->
+        
+        <!--frame -->
         <div class="col-md-7">
             <iframe 
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.6453327292793!2d121.09164277584556!3d14.56226318591953!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c7cf7092ebe1%3A0x3cb14e048995b645!2s13%20Sandoval%20Ave%2C%20Pasig%2C%201600%20Metro%20Manila!5e0!3m2!1sen!2sph!4v1778090949084!5m2!1sen!2sph" 
                 width="100%" 
-                height="200" 
+                height="400" 
                 style="border:0; border-radius: 7px;" 
                 allowfullscreen="" 
                 loading="lazy" 
                 referrerpolicy="no-referrer-when-downgrade">
             </iframe>
         </div>
+         </p>
+                <p class="text-center mt-5">
+                <a href="{{ url_for('login') }}" class="text-secondary small" style="text-decoration: none;">
+                <i class="fa-solid fa-lock me-2"></i> Staff System Access</a>
+            </p>
     </div>
 </div>
             </div>

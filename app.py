@@ -19,6 +19,8 @@ from flask import send_file
 
 load_dotenv()
 PAYMONGO_SECRET_KEY = os.getenv('PAYMONGO_SECRET_KEY')
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
 
 app = Flask(__name__)
 app.secret_key = 'js_motoworks_super_secret_key'
@@ -61,15 +63,16 @@ def get_db_connection():
 # HOME
 @app.route('/')
 def home():
-    return redirect(url_for('login'))
+    return render_template('booking.html')
 
 def generate_smart_sku(category, brand, cursor):
     cat_prefix = category[:3].upper() if len(category) >= 3 else category.upper()
     brand_prefix = brand[:3].upper() if len(brand) >= 3 else brand.upper()
     
-    cursor.execute("SELECT COUNT(*) FROM inventory WHERE category = %s AND brand = %s", (category, brand))
-    count = cursor.fetchone()[0]
-    
+    cursor.execute("SELECT COUNT(*) AS total_items FROM inventory WHERE category = %s AND brand = %s", (category, brand))
+    result = cursor.fetchone()
+    count = result['total_items'] if result else 0
+
     new_number = str(count + 1).zfill(3) 
     return f"{cat_prefix}-{brand_prefix}-{new_number}"
 
@@ -801,6 +804,28 @@ def export_sales_excel():
         download_name=f"JS_Motoworks_Sales_{date_today}.xlsx", 
         as_attachment=True
     )
+
+# Pinalitan natin ng <string:item_sku> at 'item_sku' ang variable
+@app.route('/delete_item/<string:item_sku>', methods=['POST'])
+def delete_item(item_sku):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("DELETE FROM inventory WHERE sku = %s", (item_sku,))
+        conn.commit()
+
+        if cursor.rowcount > 0:
+            return jsonify({"success": True, "message": "Item deleted successfully!"})
+        else:
+            return jsonify({"success": False, "message": "Hindi nahanap ang item."})
+
+    except mysql.connector.errors.IntegrityError:
+        return jsonify({"success": False, "message": "Cannot be deleted: This item already has a sales record. Just set the stock to zero for audit purposes."})
+    
+    except Exception as e:
+        print(f"ERROR SA DELETE: {e}")
+        return jsonify({"success": False, "message": f"Database Error: {str(e)}"})
 
 # RUN
 if __name__ == '__main__':
