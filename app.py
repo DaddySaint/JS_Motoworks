@@ -834,7 +834,7 @@ def export_sales_excel():
         as_attachment=True
     )
 
-# Pinalitan natin ng <string:item_sku> at 'item_sku' ang variable
+
 @app.route('/delete_item/<string:item_sku>', methods=['POST'])
 def delete_item(item_sku):
     try:
