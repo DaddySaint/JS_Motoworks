@@ -145,53 +145,62 @@ def dashboard():
                            pay_data=pay_data)
 
 # INVENTORY
-# INVENTORY
 @app.route('/inventory', methods=['GET', 'POST'])
-def inventory_page(): 
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    if session.get('role') != 'Admin':
-        return redirect(url_for('pos_page'))
-    
+@admin_only
+def inventory_page():
+    # Buksan ang connection sa labas ng try para ma-close nang maayos sa finally
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    if request.method == 'POST':
-        scanned_sku = request.form['sku'].strip()
-        item_name = request.form['item_name']
-        brand = request.form['brand']
-        category = request.form['category']
-        price = request.form['price']
-        added_qty = int(request.form['stock_qty'])
+    if not conn:
+        return "Database Connection Error"
         
-        cursor.execute("SELECT * FROM inventory WHERE sku = %s", (scanned_sku,))
-        existing_item = cursor.fetchone()
+    try:
+        cursor = conn.cursor(dictionary=True)
         
-        if existing_item:
-            cursor.execute("""
-                UPDATE inventory 
-                SET stock_qty = stock_qty + %s 
-                WHERE sku = %s
-            """, (added_qty, scanned_sku))
+        if request.method == 'POST':
+            # Gumamit ng .strip() para iwas sa hidden characters mula sa scanner
+            scanned_sku = request.form.get('sku', '').strip()
+            item_name = request.form.get('item_name', '').strip()
+            brand = request.form.get('brand', '').strip()
+            category = request.form.get('category', '')
+            price = request.form.get('price', 0)
+            added_qty = int(request.form.get('stock_qty', 0))
             
-            current_user = session.get('username', 'Admin')
-            cursor.execute(
-                "INSERT INTO stock_logs (sku, action, qty, username, remarks) VALUES (%s, %s, %s, %s, %s)",
-                (scanned_sku, 'Stock In', added_qty, current_user, "Added via New Item Form")
-            )
-        else:
-            sql = "INSERT INTO inventory (sku, item_name, brand, category, price, stock_qty) VALUES (%s, %s, %s, %s, %s, %s)"
-            val = (scanned_sku, item_name, brand, category, price, added_qty)
-            cursor.execute(sql, val)
+            # 1. I-verify muna kung existing ang SKU
+            cursor.execute("SELECT sku, stock_qty FROM inventory WHERE sku = %s", (scanned_sku,))
+            existing_item = cursor.fetchone()
             
-        conn.commit()
-        return redirect(url_for('inventory_page')) 
+            if existing_item:
+                cursor.execute("""
+                    UPDATE inventory 
+                    SET stock_qty = stock_qty + %s 
+                    WHERE sku = %s
+                """, (added_qty, scanned_sku))
+                
+                
+                cursor.execute("""
+                    INSERT INTO stock_logs (sku, action, qty, username, remarks) 
+                    VALUES (%s, 'Stock In', %s, %s, 'Inventory Auto-Update')
+                """, (scanned_sku, added_qty, session.get('username')))
+            else:
+                
+                cursor.execute("""
+                    INSERT INTO inventory (sku, item_name, brand, category, price, stock_qty) 
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (scanned_sku, item_name, brand, category, price, added_qty))
+            
+            conn.commit()
+            return redirect(url_for('inventory_page'))
+
+        cursor.execute("SELECT * FROM inventory ORDER BY item_id DESC")
+        items = cursor.fetchall()
+        return render_template('inventory.html', items=items)
         
-    cursor.execute("SELECT * FROM inventory ORDER BY item_id DESC")
-    items = cursor.fetchall()
-    conn.close()
-    
-    return render_template('inventory.html', items=items)
+    except Exception as e:
+        if conn: conn.rollback()
+        print(f"CRITICAL INVENTORY ERROR: {e}")
+        return f"Database Error: {str(e)}"
+    finally:
+        if conn: conn.close()
 
 # 2. POS
 @app.route('/pos')
@@ -659,9 +668,9 @@ def generate_paymongo_link():
 
 # PRINT RECEIPT
 def print_receipt_direct(receipt_no, cashier_name, cart, total, method, gcash_ref):
-    printer_name = "POS-58" #  IN CONTROL PANEL
+    printer_name = "POS-58" 
     
-    date_str = datetime.datetime.now().strftime('%y-%m-%d %H:%M')
+    date_str = datetime.now().strftime('%y-%m-%d %H:%M')
     
     receipt_text = f"""
 JS MOTOWORKS
@@ -721,27 +730,30 @@ def get_item(sku):
     if not conn:
         return jsonify({'status': 'error', 'message': 'Database connection error'})
 
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT * FROM inventory WHERE sku = %s", (clean_sku,))
-    item = cursor.fetchone()
-    conn.close()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM inventory WHERE sku = %s", (clean_sku,))
+        item = cursor.fetchone()
 
-    if item:
-        if item['stock_qty'] <= 0:
-            return jsonify({'status': 'error', 'message': f"Item '{item['item_name']}' is out of stock!"})
+        if item:
+            if item['stock_qty'] <= 0:
+                return jsonify({'status': 'error', 'message': f"Item '{item['item_name']}' is out of stock!"})
             
-        return jsonify({
-            'status': 'success',
-            'data': {
-                'sku': item['sku'],
-                'item_name': item['item_name'],
-                'price': item['price'],
-                'stock_qty': item['stock_qty']
-            }
-        })
-    else:
-        return jsonify({'status': 'error', 'message': f'Barcode {clean_sku} not found in inventory.'})
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'sku': item['sku'],
+                    'item_name': item['item_name'],
+                    'price': float(item['price']),
+                    'stock_qty': item['stock_qty']
+                }
+            })
+        else:
+            return jsonify({'status': 'error', 'message': f'Barcode {clean_sku} not found.'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
 
 # UPDATE BARCODE
 @app.route('/update_barcode', methods=['POST'])
@@ -860,8 +872,6 @@ def purge_sales():
 
     try:
         cursor = conn.cursor(dictionary=True)
-
-        #VERIFY ADMIN PASSWORD 
         cursor.execute("SELECT password_hash FROM users WHERE user_id = %s", (session['user_id'],))
         admin = cursor.fetchone()
         

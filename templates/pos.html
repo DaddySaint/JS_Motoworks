@@ -198,29 +198,56 @@
         updateCartDisplay();
     }
 
-    // ADD ITEMS
+   // ADD ITEMS
     document.getElementById("scannerInput").addEventListener("keypress", function(event) {
-        if (event.key === "Enter") { event.preventDefault(); searchItem(); }
+        if (event.key === "Enter") { 
+            event.preventDefault(); 
+            searchItem(); 
+        }
     });
 
     function searchItem() {
-        const sku = document.getElementById('scannerInput').value.trim(); 
-        
-        if(!sku) return;
+        const barcode = document.getElementById('scannerInput').value.trim();
+        if (barcode !== "") {
+            processBarcode(barcode);
+        }
+    }
 
-        fetch(`/api/get_item/${sku}`)
+    function processBarcode(barcode) {
+        fetch(`/api/get_item/${barcode}`)
             .then(response => response.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    addToCart('Part', data.data.item_name, data.data.price, data.data.sku);
-                    document.getElementById('scannerInput').value = ''; 
-                } else {
-                    alert(data.message);
+            .then(result => {
+                if (result.status === 'success') {
+                    const item = result.data;
+                    
+                    let currentCart = carts[activeCustomer];
+                    let existingItem = currentCart.find(i => i.sku === item.sku && i.type === 'Part');
+                    
+                    if (existingItem) {
+                        existingItem.qty += 1;
+                    } else {
+                        currentCart.push({
+                            sku: item.sku,
+                            name: item.item_name,
+                            price: item.price,
+                            qty: 1,
+                            type: 'Part'
+                        });
+                    }
+                    
+                    // Update ang table at tanggalin ang text sa scanner input
+                    updateCartDisplay(); 
                     document.getElementById('scannerInput').value = '';
+                    document.getElementById('scannerInput').focus(); 
+                    
+                    // WALA DAPAT ALERT() DITO SA LOOB NG SUCCESS BLOCK!
+                } else {
+                    // Dito lang dapat may alert, kapag out of stock o invalid barcode
+                    alert("Scan Error: " + result.message);
                 }
             })
             .catch(error => {
-                alert("System Error: Could not connect to barcode database.");
+                console.error("Scanner Error:", error);
             });
     }
 

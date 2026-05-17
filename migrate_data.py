@@ -36,7 +36,6 @@ def guess_category(desc):
 
 def guess_brand(desc):
     desc = str(desc).upper()
-    # Listahan ng mga sikat na brand mula sa Excel nila
     brands = ['YAMAHA', 'HONDA', 'SUZUKI', 'KAWASAKI', 'NMAX', 'AEROX', 'CLICK', 'MIO', 
               'RCB', 'HIRC', 'SMOK', 'ZENO', 'SAIYAN', 'OTAKA', 'KRX', 'MTR', 'DOMINO', 
               'BOSNY', 'DAYWAY', 'NGK', 'YAMALUBE', 'SHELL', 'PETRON', 'PIAA', 'JVT']
