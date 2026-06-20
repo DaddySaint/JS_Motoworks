@@ -81,6 +81,10 @@ def login():
                     session['username'] = user['username']
                     session['role'] = user['role']
                     session['full_name'] = user['full_name']
+
+                    if user['role'] == 'Customer':
+                        return redirect(url_for('customer_portal'))
+                    
                     return redirect(url_for('index'))
                 else:
                     return render_template('login.html', error="Invalid Password or Account Deactivated!")
@@ -146,32 +150,57 @@ def dashboard():
 @admin_only
 def inventory_page():
     try:
+        def compute_status(stock_qty, par_level=5):
+            if stock_qty <= 0:
+                return "Out of Stock"
+            elif stock_qty <= par_level:
+                return "Low Stock"
+            else:
+                return "In Stock"
+
         if request.method == 'POST':
             scanned_sku = request.form.get('sku', '').strip()
             item_name = request.form.get('item_name', '').strip()
             brand = request.form.get('brand', '').strip()
-            category = request.form.get('category', '')
-            price = float(request.form.get('price', 0))
-            added_qty = int(request.form.get('stock_qty', 0))
+            category = request.form.get('category', '').strip()
+            price = float(request.form.get('price', 0) or 0)
+            added_qty = int(request.form.get('stock_qty', 0) or 0)
 
-            check_res = supabase.table("inventory").select("sku", "stock_qty").eq("sku", scanned_sku).execute()
+            default_par_level = 5
+
+            check_res = (
+                supabase.table("inventory")
+                .select("sku, stock_qty, par_level")
+                .eq("sku", scanned_sku)
+                .execute()
+            )
 
             if len(check_res.data) > 0:
-                current_qty = check_res.data[0]['stock_qty']
+                current_item = check_res.data[0]
+                current_qty = current_item.get("stock_qty", 0) or 0
+                par_level = current_item.get("par_level", default_par_level) or default_par_level
+
+                new_qty = current_qty + added_qty
+                new_status = compute_status(new_qty, par_level)
+
                 supabase.table("inventory").update({
-                    "stock_qty": current_qty + added_qty,
-                    "status": "Active"
+                    "stock_qty": new_qty,
+                    "status": new_status
                 }).eq("sku", scanned_sku).execute()
+
             else:
+                par_level = default_par_level
+                new_status = compute_status(added_qty, par_level)
+
                 supabase.table("inventory").insert({
                     "sku": scanned_sku,
                     "item_name": item_name,
-                    "brand": brand,
-                    "category": category,
+                    "brand": brand if brand else None,
+                    "category": category if category else None,
                     "price": price,
                     "stock_qty": added_qty,
-                    "par_level": 5,
-                    "status": "Active" if added_qty > 0 else "Out of Stock"
+                    "par_level": par_level,
+                    "status": new_status
                 }).execute()
 
             # Record Audit Log
