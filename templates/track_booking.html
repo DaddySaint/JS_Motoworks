@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Track Booking - JS Motoworks</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f0f13; color: #fff; font-family: 'Poppins', sans-serif; }
+        .hero-section { padding: 80px 0; text-align: center; background: linear-gradient(135deg, #16161a, #1e1e24); border-bottom: 2px solid #ff4b2b;}
+        .result-card { background: #16161a; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); padding: 20px;}
+    </style>
+</head>
+<body>
+    <div class="hero-section mb-5">
+        <h1 style="color: #ff4b2b; font-weight: 900;">JS MOTOWORKS</h1>
+        <h3>Service Appointment Tracker</h3>
+        <p class="text-muted">Enter your registered contact number to check your motorcycle's status.</p>
+        
+        <form method="POST" action="/track_booking" class="d-flex justify-content-center mt-4">
+            <div class="input-group" style="max-width: 400px;">
+                <input type="text" name="contact_number" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="e.g. 09123456789" value="{{ contact }}" required>
+                <button class="btn btn-primary px-4" style="background: #ff4b2b; border: none;" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="container">
+        {% if status_data is not none %}
+            {% if status_data|length > 0 %}
+                <h4 class="mb-4">Records for: <span class="text-warning">{{ contact }}</span></h4>
+                <div class="row">
+                    {% for item in status_data %}
+                    <div class="col-md-6 mb-3">
+                        <div class="result-card">
+                            <div class="d-flex justify-content-between border-bottom border-secondary pb-2 mb-2">
+                                <strong>{{ item.appointment_date }} ({{ item.appointment_time }})</strong>
+                                
+                                {% if item.status == 'Pending' %}<span class="badge bg-warning text-dark">Pending Review</span>
+                                {% elif item.status == 'Confirmed' %}<span class="badge bg-info text-dark">Confirmed</span>
+                                {% elif item.status == 'Completed' %}<span class="badge bg-success">Ready for Pickup</span>
+                                {% else %}<span class="badge bg-secondary">{{ item.status }}</span>{% endif %}
+                            </div>
+                            <p class="mb-1"><strong>Model:</strong> {{ item.motorcycle_model }}</p>
+                            <p class="mb-0 text-muted"><small><strong>Service:</strong> {{ item.service_requested }}</small></p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-danger text-center">No appointment records found for this contact number.</div>
+            {% endif %}
+        {% endif %}
+        <div class="text-center mt-5"><a href="/book" class="text-muted">Book a new appointment</a></div>
+    </div>
+</body>
+</html>

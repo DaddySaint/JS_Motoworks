@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JS Motoworks</title>
-    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='logo.jpg', v=1) }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -34,6 +33,8 @@
             padding: 20px;
             border-right: 1px solid rgba(255, 255, 255, 0.05);
             box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
         }
 
         .main-content {
@@ -48,7 +49,6 @@
             margin-bottom: 25px;
         }
 
-        /* Gradient Text effect para sa Logo */
         .brand-text {
             background: var(--accent-gradient);
             -webkit-background-clip: text;
@@ -70,7 +70,7 @@
             font-weight: 600;
         }
 
-        .nav-link i { margin-right: 12px; font-size: 1.2rem; }
+        .nav-link i { margin-right: 12px; font-size: 1.2rem; width: 20px; text-align: center; }
 
         .nav-link:hover, .nav-link.active {
             background: var(--accent-gradient);
@@ -84,14 +84,7 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 20px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-
-        .card-custom:hover {
-            transform: translateY(-5px); 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-        }
-
 
         .table { color: var(--text-main); vertical-align: middle; }
         .table-dark { background-color: transparent; }
@@ -101,7 +94,6 @@
             border-bottom: 2px solid #ff4b2b; 
         }
         .table-dark td { border-color: rgba(255,255,255,0.05); }
-
     </style>
 </head>
 <body>
@@ -109,41 +101,53 @@
     <div class="sidebar">
         <div class="logo-area">
             <h4 class="brand-text m-0">JS MOTOWORKS</h4>
-            <small class="text-white fw-bold text-uppercase style="letter-spacing: 2px; font-size: 0.7rem;">SYSTEM ADMIN</small>
+            <small class="text-white fw-bold text-uppercase" style="letter-spacing: 2px; font-size: 0.7rem;">
+                {{ session.get('role', 'System Access') }}
+            </small>
         </div>
         
-<nav>
-            {% if session.get('role') == 'Admin' %}
-            <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">
-                <i class="fa-solid fa-gauge-high"></i> Dashboard
-            </a>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/dashboard"><i class="fas fa-chart-line"></i> Dashboard</a>
+            </li>
+
+            {% if session.get('role') in ['Admin', 'Cashier'] %}
+            <li class="nav-item">
+                <a class="nav-link" href="/pos"><i class="fas fa-cash-register"></i> Point of Sale</a>
+            </li>
             {% endif %}
 
-            <a href="/pos" class="nav-link {% if request.path == '/pos' %}active{% endif %}">
-                <i class="fa-solid fa-desktop"></i> Point of Sale
-            </a>
-
-            {% if session.get('role') == 'Admin' %}
-            <a href="/inventory" class="nav-link {% if request.path == '/inventory' %}active{% endif %}">
-                <i class="fa-solid fa-boxes-stacked"></i> Inventory
-            </a>
-            <a href="/appointments" class="nav-link {% if request.path == '/appointments' %}active{% endif %}">
-                <i class="fa-solid fa-calendar-check"></i> Appointments
-            </a>
-            <a href="/users" class="nav-link {% if request.path == '/users' %}active{% endif %}">
-                <i class="fa-solid fa-users-gear"></i> Manage Users
-            </a>
+            {% if session.get('role') in ['Admin', 'Inventory'] %}
+            <li class="nav-item">
+                <a class="nav-link" href="/inventory"><i class="fas fa-boxes"></i> Inventory</a>
+            </li>
             {% endif %}
 
-            <a href="/sales" class="nav-link {% if request.path == '/sales' %}active{% endif %}">
-                <i class="fa-solid fa-money-bill-trend-up"></i> Sales History
+            {% if session.get('role') == 'Admin' %}
+            <li class="nav-item">
+                <a class="nav-link" href="/appointments"><i class="fas fa-calendar-check"></i> Appointments</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/sales"><i class="fas fa-file-invoice-dollar"></i> Sales Reports</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/users"><i class="fas fa-users-cog"></i> Users & Settings</a>
+            </li>
+            {% endif %}
+        </ul>
+
+        <div class="mt-auto pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.05) !important;">
+            <div class="d-flex align-items-center mb-3 px-2">
+                <i class="fas fa-user-circle fs-3 me-2 text-muted"></i>
+                <div>
+                    <div class="text-white fw-bold lh-1" style="font-size: 0.9rem;">{{ session.get('full_name', 'User') }}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">@{{ session.get('username', '') }}</div>
+                </div>
+            </div>
+            <a href="/logout" class="btn w-100" style="background-color: #2a2a32; color: #ff4b2b; font-weight: bold; border: 1px solid rgba(255, 75, 43, 0.3);">
+                <i class="fas fa-sign-out-alt"></i> Logout
             </a>
-            
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="/logout" class="nav-link" style="color: #ff416c;">
-                <i class="fa-solid fa-power-off"></i> Logout
-            </a>
-        </nav>
+        </div>
     </div>
 
     <div class="main-content">

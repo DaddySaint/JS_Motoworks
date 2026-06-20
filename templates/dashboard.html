@@ -1,156 +1,92 @@
 {% extends "layout.html" %}
-
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-white m-0">Dashboard Overview</h2>
-        <a href="/sales" class="btn btn-warning fw-bold"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Full Sales Report</a>
-    </div>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card card-custom text-center mb-3">
-                <h6 class="text-white fw-bold text-uppercase letter-spacing-1 mb-2">Total Sales Today</h6>
-                <h2 class="fw-bold m-0" style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                    PHP {{ sales_today }}
-                </h2>
-            </div>
-        </div>
+<h2 class="text-white mb-4">System Dashboard</h2>
 
-        <div class="col-md-6">
-            <div class="card card-custom text-center mb-3">
-                <h6 class="text-white fw-bold text-uppercase letter-spacing-1 mb-2">Low Stock Items</h6>
-                <h2 class="fw-bold text-danger m-0">{{ low_stock }}</h2>
-            </div>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card-custom text-center">
+            <h5 class="text-muted"><i class="fas fa-wallet"></i> Sales Today</h5>
+            <h2 class="text-success mt-2">₱ {{ "{:,.2f}".format(sales_today) }}</h2>
         </div>
     </div>
-
-    <div class="row mt-2">
-        <div class="col-md-8">
-            <div class="card card-custom mb-4">
-                <h6 class="fw-bold text-white mb-3"><i class="fa-solid fa-chart-line text-warning me-2"></i>7-Day Sales Trend</h6>
-                <div style="height: 300px;">
-                    <canvas id="salesChart"></canvas>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card card-custom mb-4">
-                <h6 class="fw-bold text-white mb-3"><i class="fa-solid fa-wallet text-info me-2"></i>Revenue by Payment</h6>
-                <div style="height: 300px; display: flex; justify-content: center;">
-                    <canvas id="paymentChart"></canvas>
-                </div>
-            </div>
+    <div class="col-md-4">
+        <div class="card-custom text-center">
+            <h5 class="text-muted"><i class="fas fa-exclamation-triangle"></i> Low Stock Alerts</h5>
+            <h2 class="text-danger mt-2">{{ low_stock }} Items</h2>
         </div>
     </div>
-
-    <div class="card card-custom">
-        <h5 class="mb-4 fw-bold text-white"><i class="fa-solid fa-bolt text-warning me-2"></i> Recent Transactions</h5>
-        <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th class="text-white">Receipt No.</th>
-                        <th class="text-white">Amount</th>
-                        <th class="text-white">Method</th>
-                        <th class="text-white">Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sale in recent_sales %}
-                    <tr>
-                        <td class="fw-bold text-white">{{ sale.receipt_no }}</td>
-                        <td class="text-success fw-bold">PHP {{ sale.total_amount }}</td>
-                        <td>
-                            {% if sale.payment_method == 'GCash' %}
-                                <span class="badge bg-primary text-white"><i class="fa-solid fa-mobile-screen me-1"></i>GCash</span>
-                            {% else %}
-                                <span class="badge bg-secondary text-white"><i class="fa-solid fa-money-bill me-1"></i>Cash</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-white">{{ sale.transaction_date }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="col-md-4">
+        <div class="card-custom text-center">
+            <h5 class="text-muted"><i class="fas fa-motorcycle"></i> Pending Appointments</h5>
+            <h2 class="text-info mt-2">Check Tracking</h2>
         </div>
     </div>
 </div>
 
+<div class="row">
+    <div class="col-md-8">
+        <div class="card-custom mb-4" style="height: 100%;">
+            <h5 class="text-white mb-3">7-Day Sales Trend</h5>
+            <canvas id="salesChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card-custom" style="height: 100%;">
+            <h5 class="text-white mb-3">Recent Transactions</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-borderless table-sm">
+                    <tbody>
+                        {% for sale in recent_sales %}
+                        <tr class="border-bottom border-secondary">
+                            <td>
+                                <div class="text-white">{{ sale.receipt_no }}</div>
+                                <small class="text-muted">{{ sale.transaction_date[:10] }}</small>
+                            </td>
+                            <td class="text-end text-success fw-bold align-middle">
+                                ₱{{ "{:,.2f}".format(sale.total_amount) }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="2" class="text-muted text-center py-4">No recent transactions.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-   
-    const chartDates = {{ chart_dates | tojson }};
-    const chartSales = {{ chart_sales | tojson }};
-    const payLabels = {{ pay_labels | tojson }};
-    const payData = {{ pay_data | tojson }};
+    const chartDates = {{ chart_dates | tojson | safe }};
+    const chartSales = {{ chart_sales | tojson | safe }};
 
-    
-    Chart.defaults.color = '#a0a0b0';
-    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
-
-
-    const ctxSales = document.getElementById('salesChart').getContext('2d');
-    
-
-    let gradientFill = ctxSales.createLinearGradient(0, 0, 0, 300);
-    gradientFill.addColorStop(0, 'rgba(255, 75, 43, 0.5)'); 
-    gradientFill.addColorStop(1, 'rgba(255, 75, 43, 0.0)');
-
-    new Chart(ctxSales, {
-        type: 'line',
-        data: {
-            labels: chartDates,
-            datasets: [{
-                label: 'Daily Sales (PHP)',
-                data: chartSales,
-                borderColor: '#ff4b2b',
-                backgroundColor: gradientFill,
-                borderWidth: 3,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#ff4b2b',
-                pointRadius: 4,
-                fill: true,
-                tension: 0.4 
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
-    });
-
-    // (Payment Methods)
-    const ctxPay = document.getElementById('paymentChart').getContext('2d');
-    new Chart(ctxPay, {
-        type: 'doughnut',
-        data: {
-            labels: payLabels,
-            datasets: [{
-                data: payData,
-                backgroundColor: [
-                    '#ff4b2b', // (Cash)
-                    '#0dcaf0', // (GCash)
-                    '#198754' 
-                ],
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
+    if(chartDates.length > 0) {
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartDates,
+                datasets: [{
+                    label: 'Daily Sales (₱)',
+                    data: chartSales,
+                    borderColor: '#ff4b2b',
+                    backgroundColor: 'rgba(255, 75, 43, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
             },
-            cutout: '70%'
-        }
-    });
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}
