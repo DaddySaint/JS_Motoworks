@@ -11,6 +11,20 @@ from dotenv import load_dotenv
 from functools import wraps
 from supabase import create_client, Client
 
+def compute_status(stock_qty, par_level=5):
+    stock_qty = int(stock_qty or 0)
+    par_level = int(par_level or 0)
+
+    if stock_qty <= 0:
+        return "Out of Stock"
+    elif stock_qty <= par_level:
+        return "Low Stock"
+    return "In Stock"
+
+
+def now_iso():
+    return datetime.utcnow().isoformat()
+
 # ==========================================
 # 1. SETUP & INITIALIZATION
 # ==========================================
@@ -150,67 +164,75 @@ def dashboard():
 @admin_only
 def inventory_page():
     try:
-        def compute_status(stock_qty, par_level=5):
-            if stock_qty <= 0:
-                return "Out of Stock"
-            elif stock_qty <= par_level:
-                return "Low Stock"
-            else:
-                return "In Stock"
-
         if request.method == 'POST':
             scanned_sku = request.form.get('sku', '').strip()
+            barcode = request.form.get('barcode', '').strip()
             item_name = request.form.get('item_name', '').strip()
             brand = request.form.get('brand', '').strip()
             category = request.form.get('category', '').strip()
+            specs = request.form.get('specs', '').strip()
             price = float(request.form.get('price', 0) or 0)
             added_qty = int(request.form.get('stock_qty', 0) or 0)
+            par_level = int(request.form.get('par_level', 5) or 5)
 
-            default_par_level = 5
+            if not scanned_sku:
+                return "SKU is required.", 400
 
             check_res = (
                 supabase.table("inventory")
-                .select("sku, stock_qty, par_level")
+                .select("item_id, sku, stock_qty, par_level")
                 .eq("sku", scanned_sku)
                 .execute()
             )
 
-            if len(check_res.data) > 0:
+            if check_res.data:
                 current_item = check_res.data[0]
-                current_qty = current_item.get("stock_qty", 0) or 0
-                par_level = current_item.get("par_level", default_par_level) or default_par_level
+                current_qty = int(current_item.get("stock_qty", 0) or 0)
+                current_par = int(current_item.get("par_level", par_level) or par_level)
 
                 new_qty = current_qty + added_qty
-                new_status = compute_status(new_qty, par_level)
+                new_status = compute_status(new_qty, current_par)
 
                 supabase.table("inventory").update({
                     "stock_qty": new_qty,
-                    "status": new_status
+                    "status": new_status,
+                    "last_updated": now_iso()
                 }).eq("sku", scanned_sku).execute()
 
+                # Audit log for stock in existing item
+                supabase.table("stock_logs").insert({
+                    "sku": scanned_sku,
+                    "action": "Stock In",
+                    "qty": added_qty,
+                    "username": session.get('username'),
+                    "remarks": "Added via Form"
+                }).execute()
+
             else:
-                par_level = default_par_level
                 new_status = compute_status(added_qty, par_level)
 
                 supabase.table("inventory").insert({
                     "sku": scanned_sku,
+                    "barcode": barcode if barcode else None,
                     "item_name": item_name,
                     "brand": brand if brand else None,
                     "category": category if category else None,
+                    "specs": specs if specs else None,
                     "price": price,
                     "stock_qty": added_qty,
                     "par_level": par_level,
-                    "status": new_status
+                    "status": new_status,
+                    "last_updated": now_iso()
                 }).execute()
 
-            # Record Audit Log
-            supabase.table("stock_logs").insert({
-                "sku": scanned_sku,
-                "action": "Stock In",
-                "qty": added_qty,
-                "username": session.get('username'),
-                "remarks": "Added via Form"
-            }).execute()
+                # Audit log for newly created item
+                supabase.table("stock_logs").insert({
+                    "sku": scanned_sku,
+                    "action": "Stock In",
+                    "qty": added_qty,
+                    "username": session.get('username'),
+                    "remarks": "New inventory item added"
+                }).execute()
 
             return redirect(url_for('inventory_page'))
 
@@ -221,15 +243,16 @@ def inventory_page():
         return f"Database Error: {str(e)}"
 
 @app.route('/delete_item/<string:item_sku>', methods=['POST'])
+@admin_only
 def delete_item(item_sku):
     try:
-        # Panel Revision: Soft Delete
         response = supabase.table("inventory").update({
             "status": "Out of Stock",
-            "stock_qty": 0
+            "stock_qty": 0,
+            "last_updated": now_iso()
         }).eq("sku", item_sku).execute()
 
-        if len(response.data) > 0:
+        if response.data:
             return jsonify({"success": True, "message": "Item archived successfully."})
         return jsonify({"success": False, "message": "Item not found."})
     except Exception as e:
@@ -238,40 +261,106 @@ def delete_item(item_sku):
 @app.route('/edit_item', methods=['POST'])
 @admin_only
 def edit_item():
-    sku = request.form.get('sku')
-    supabase.table("inventory").update({
-        "item_name": request.form.get('item_name'),
-        "brand": request.form.get('brand'),
-        "category": request.form.get('category'),
-        "price": request.form.get('price')
-    }).eq("sku", sku).execute()
-    return redirect('/inventory')
+    try:
+        item_id = int(request.form.get('item_id'))
+        sku = request.form.get('sku', '').strip()
+        barcode = request.form.get('barcode', '').strip()
+        item_name = request.form.get('item_name', '').strip()
+        brand = request.form.get('brand', '').strip()
+        category = request.form.get('category', '').strip()
+        specs = request.form.get('specs', '').strip()
+        price = float(request.form.get('price', 0) or 0)
+        stock_qty = int(request.form.get('stock_qty', 0) or 0)
+        par_level = int(request.form.get('par_level', 5) or 5)
 
-@app.route('/update_barcode', methods=['POST'])
-@admin_only
-def update_barcode():
-    old_sku = request.form.get('old_sku')
-    new_barcode = request.form.get('new_barcode').strip()
-    supabase.table("inventory").update({"sku": new_barcode}).eq("sku", old_sku).execute()
-    return redirect('/inventory')
+        if not sku:
+            return "SKU is required.", 400
+
+        # Check if another item already uses this SKU
+        sku_check = (
+            supabase.table("inventory")
+            .select("item_id")
+            .eq("sku", sku)
+            .neq("item_id", item_id)
+            .execute()
+        )
+        if sku_check.data:
+            return "SKU already exists for another item.", 400
+
+        # Check barcode uniqueness if barcode is provided
+        if barcode:
+            barcode_check = (
+                supabase.table("inventory")
+                .select("item_id")
+                .eq("barcode", barcode)
+                .neq("item_id", item_id)
+                .execute()
+            )
+            if barcode_check.data:
+                return "Barcode already exists for another item.", 400
+
+        status = compute_status(stock_qty, par_level)
+
+        supabase.table("inventory").update({
+            "sku": sku,
+            "barcode": barcode if barcode else None,
+            "item_name": item_name,
+            "brand": brand if brand else None,
+            "category": category if category else None,
+            "specs": specs if specs else None,
+            "price": price,
+            "stock_qty": stock_qty,
+            "par_level": par_level,
+            "status": status,
+            "last_updated": now_iso()
+        }).eq("item_id", item_id).execute()
+
+        return redirect(url_for('inventory_page'))
+
+    except Exception as e:
+        return f"Database Error: {str(e)}"
+    
 
 @app.route('/restock', methods=['POST'])
 @admin_only
 def restock_item():
-    sku = request.form['sku']
-    added_qty = int(request.form['added_qty'])
-    current_user = session.get('username')
+    try:
+        sku = request.form['sku'].strip()
+        added_qty = int(request.form['added_qty'])
+        current_user = session.get('username')
 
-    item_res = supabase.table("inventory").select("stock_qty").eq("sku", sku).execute()
-    if item_res.data:
-        current_qty = item_res.data[0]['stock_qty']
-        supabase.table("inventory").update({"stock_qty": current_qty + added_qty}).eq("sku", sku).execute()
-        
-        supabase.table("stock_logs").insert({
-            "sku": sku, "action": "Restock", "qty": added_qty, "username": current_user, "remarks": "Manual Restock"
-        }).execute()
-        
-    return redirect(url_for('inventory_page'))
+        item_res = (
+            supabase.table("inventory")
+            .select("stock_qty, par_level")
+            .eq("sku", sku)
+            .execute()
+        )
+
+        if item_res.data:
+            current_qty = int(item_res.data[0]['stock_qty'] or 0)
+            par_level = int(item_res.data[0].get('par_level', 5) or 5)
+
+            new_qty = current_qty + added_qty
+            new_status = compute_status(new_qty, par_level)
+
+            supabase.table("inventory").update({
+                "stock_qty": new_qty,
+                "status": new_status,
+                "last_updated": now_iso()
+            }).eq("sku", sku).execute()
+
+            supabase.table("stock_logs").insert({
+                "sku": sku,
+                "action": "Restock",
+                "qty": added_qty,
+                "username": current_user,
+                "remarks": "Manual Restock"
+            }).execute()
+
+        return redirect(url_for('inventory_page'))
+
+    except Exception as e:
+        return f"Database Error: {str(e)}"
 
 @app.route('/audit_logs')
 @admin_only
@@ -348,15 +437,26 @@ def checkout():
                 "subtotal": (item['qty'] * item['price'])
             }).execute()
 
-            if item['type'] == 'Part':
-                item_data = supabase.table("inventory").select("stock_qty").eq("sku", item['sku']).execute()
-                if item_data.data:
-                    current_qty = item_data.data[0]['stock_qty']
-                    new_qty = max(0, current_qty - item['qty'])
-                    supabase.table("inventory").update({
-                        "stock_qty": new_qty,
-                        "status": "Active" if new_qty > 0 else "Out of Stock"
-                    }).eq("sku", item['sku']).execute()
+if item['type'] == 'Part':
+    item_data = (
+        supabase.table("inventory")
+        .select("stock_qty, par_level")
+        .eq("sku", item['sku'])
+        .execute()
+    )
+
+    if item_data.data:
+        current_qty = int(item_data.data[0]['stock_qty'] or 0)
+        par_level = int(item_data.data[0].get('par_level', 5) or 5)
+
+        new_qty = max(0, current_qty - int(item['qty']))
+        new_status = compute_status(new_qty, par_level)
+
+        supabase.table("inventory").update({
+            "stock_qty": new_qty,
+            "status": new_status,
+            "last_updated": now_iso()
+        }).eq("sku", item['sku']).execute()
 
         cashier = session.get('username', f"User {session['user_id']}")
         try:
@@ -367,7 +467,6 @@ def checkout():
         return jsonify({"status": "success", "message": "Transaction completed!", "receipt": receipt_no})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 # ==========================================
 # 7. BOOKING & APPOINTMENTS
